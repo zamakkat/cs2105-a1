@@ -14,7 +14,7 @@ class WebServer {
 	// Configure the directory where all HTML files are 
 	// stored.  You need to change this to your own local
 	// directory if you want to play with this server code.
-	static String WEB_ROOT = "/Users/ooiwt/cs2105/code";
+	static String WEB_ROOT = "/Users/zamakkat1/Dropbox/Study/Sem6/CS2105/Assignments/cs2105-a1";
 
 	public static void main(String args[]) 
 	{
@@ -77,11 +77,41 @@ class WebServer {
 				// We are expecting the first line to be GET <filename> ...
 				// We only care about the first two tokens here.
 				String tokens[] = line.split(" ");
+				
+				
+				String filename = "";
+				
+				if (tokens[0].equals("GET")) {
+					//TODO: Put the get request code here
+					
+					// We do not really care about the rest of the HTTP
+					// request header either.  Read them off the input
+					// and throw them away.
+					while (!line.equals("")) 
+					{
+						line = br.readLine();
+					}
 
-				// If the first word is not GET, bail out.  We do not
-				// support PUT, HEAD, etc.
-				if (!tokens[0].equals("GET"))
-				{
+					// Print to screen so that we have a log of client's 
+					// requests.
+					System.out.println("GET " + tokens[1]);
+					
+					// The second token indicates the filename.
+					filename = WEB_ROOT + tokens[1];
+					
+					
+					
+				} else if (tokens[0].equals("POST")) {
+					
+					
+					
+					
+					
+					
+					
+					
+					
+				} else {
 					String errorMessage = "This simplistic server only understand GET request\r\n";
 					dos.writeBytes("HTTP/1.1 400 Bad Request\r\n");
 					dos.writeBytes("Content-length: " + errorMessage.length() + "\r\n\r\n");
@@ -90,78 +120,66 @@ class WebServer {
 					continue;
 				}
 
-				// We do not really care about the rest of the HTTP
-				// request header either.  Read them off the input
-				// and throw them away.
-				while (!line.equals("")) 
-				{
-					line = br.readLine();
-				}
-
-				// Print to screen so that we have a log of client's 
-				// requests.
-				System.out.println("GET " + tokens[1]);
-
-				// The second token indicates the filename.
-				String filename = WEB_ROOT + tokens[1];
 				File file = new File(filename);
-
+				
 				// Check for file permission or not found error.
-				if (!file.exists()) 
-				{
-					String errorMessage = "I cannot find " + tokens[1] + " on this server.\r\n";
+				if (!file.exists() || !file.isFile()) {
+					String errorMessage = "I cannot find " + filename + " on this server.\r\n";
 					dos.writeBytes("HTTP/1.1 404 Not Found\r\n");
 					dos.writeBytes("Content-length: " + errorMessage.length() + "\r\n\r\n");
 					dos.writeBytes(errorMessage);
 					s.close();
 					continue;
-				}
-				if (!file.canRead()) 
-				{
-					String errorMessage = "You have no permission to access " + tokens[1] + " on this server.\r\n";
+				} else if (!file.canRead()) {
+					String errorMessage = "You have no permission to access " + filename + " on this server.\r\n";
 					dos.writeBytes("HTTP/1.1 403 Forbidden\r\n");
 					dos.writeBytes("Content-length: " + errorMessage.length() + "\r\n\r\n");
 					dos.writeBytes(errorMessage);
 					s.close();
 					continue;
+				} else {
+					// Assume everything is OK then.  Send back a reply.
+					dos.writeBytes("HTTP/1.1 200 OK\r\n");
+
+					// We send back some HTTP response headers.
+					dos.writeBytes("Content-length: " + file.length() + "\r\n");
+
+					// We could have use Files.probeContentType to find 
+					// the content type of the requested file, but let 
+					// me do the poor man approach here.
+					if (filename.endsWith(".html")) 
+					{
+						dos.writeBytes("Content-type: text/html\r\n");
+					}
+					if (filename.endsWith(".jpg")) 
+					{
+						dos.writeBytes("Content-type: image/jpeg\r\n");
+					}
+					if (filename.endsWith(".pl")) 
+					{
+						dos.writeBytes("Content-type: text/pl\r\n");
+					}
+					dos.writeBytes("\r\n");
+
+					// Finish with HTTP response header.  Now send
+					// the body of the file.
+					
+					// Read the content 1KB at a time.
+					byte[] buffer = new byte[1024];
+					FileInputStream fis = new FileInputStream(file);
+					int size = fis.read(buffer);
+					while (size > 0) 
+					{
+						dos.write(buffer, 0, size);
+						size = fis.read(buffer);
+					}
+					dos.flush();
+
+					// Finally, close the socket and get ready for
+					// another connection.
+					s.close();
 				}
-
-				// Assume everything is OK then.  Send back a reply.
-				dos.writeBytes("HTTP/1.1 200 OK\r\n");
-
-				// We send back some HTTP response headers.
-				dos.writeBytes("Content-length: " + file.length() + "\r\n");
-
-				// We could have use Files.probeContentType to find 
-				// the content type of the requested file, but let 
-				// me do the poor man approach here.
-				if (filename.endsWith(".html")) 
-				{
-					dos.writeBytes("Content-type: text/html\r\n");
-				}
-				if (filename.endsWith(".jpg")) 
-				{
-					dos.writeBytes("Content-type: image/jpeg\r\n");
-				}
-				dos.writeBytes("\r\n");
-
-				// Finish with HTTP response header.  Now send
-				// the body of the file.
 				
-				// Read the content 1KB at a time.
-				byte[] buffer = new byte[1024];
-				FileInputStream fis = new FileInputStream(file);
-				int size = fis.read(buffer);
-				while (size > 0) 
-				{
-					dos.write(buffer, 0, size);
-					size = fis.read(buffer);
-				}
-				dos.flush();
-
-				// Finally, close the socket and get ready for
-				// another connection.
-				s.close();
 			}
 			catch (IOException e)
 			{

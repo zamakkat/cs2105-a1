@@ -80,10 +80,10 @@ class WebServer {
 				
 				String filepath = "";
 				String filename = "";
-				String REQUEST_METHOD = "";
-				String QUERY_STRING = "";
-				String CONTENT_TYPE = "";
-				String CONTENT_LENGTH = "";
+				String req_method = "";
+				String query_string = "";
+				String content_type = "";
+				String content_length = "";
 				
 				if (tokens[0].equals("GET")) {
 					//TODO: Put the get request code here
@@ -104,8 +104,8 @@ class WebServer {
 					filepath = WEB_ROOT + tokens[1];
 					filename = tokens[1];
 					
-					REQUEST_METHOD = "GET";
-					QUERY_STRING = "";
+					req_method = "GET";
+					query_string = "";
 					
 				} else if (tokens[0].equals("POST")) {
 					
@@ -114,8 +114,9 @@ class WebServer {
 					
 					
 					
-					REQUEST_METHOD = "POST";
-					
+					req_method = "POST";
+					content_type = "";
+					content_length = "";
 					
 				} else {
 					String errorMessage = "This simplistic server only understand GET request\r\n";
@@ -151,8 +152,10 @@ class WebServer {
 					if (filename.endsWith(".pl")) 
 					{
 						System.out.println("Executing Perl script.");
-						
-						
+						String [] env = {"REQUEST_METHOD="+req_method, "QUERY_STRING="+query_string, "CONTENT_TYPE="+content_type, "CONTENT_LENGTH="+content_length};
+						//Process todo = Runtime.getRuntime().exec("/usr/bin/perl " + filepath, env);
+						Process todo = Runtime.getRuntime().exec(filepath, env);
+					    BufferedReader reader = new BufferedReader(new InputStreamReader(todo.getInputStream()));
 						
 						
 						dos.writeBytes("Content-length: " + file.length() + "\r\n");

@@ -78,8 +78,12 @@ class WebServer {
 				// We only care about the first two tokens here.
 				String tokens[] = line.split(" ");
 				
-				
+				String filepath = "";
 				String filename = "";
+				String REQUEST_METHOD = "";
+				String QUERY_STRING = "";
+				String CONTENT_TYPE = "";
+				String CONTENT_LENGTH = "";
 				
 				if (tokens[0].equals("GET")) {
 					//TODO: Put the get request code here
@@ -97,9 +101,11 @@ class WebServer {
 					System.out.println("GET " + tokens[1]);
 					
 					// The second token indicates the filename.
-					filename = WEB_ROOT + tokens[1];
+					filepath = WEB_ROOT + tokens[1];
+					filename = tokens[1];
 					
-					
+					REQUEST_METHOD = "GET";
+					QUERY_STRING = "";
 					
 				} else if (tokens[0].equals("POST")) {
 					
@@ -108,7 +114,7 @@ class WebServer {
 					
 					
 					
-					
+					REQUEST_METHOD = "POST";
 					
 					
 				} else {
@@ -120,7 +126,7 @@ class WebServer {
 					continue;
 				}
 
-				File file = new File(filename);
+				File file = new File(filepath);
 				
 				// Check for file permission or not found error.
 				if (!file.exists() || !file.isFile()) {
@@ -141,38 +147,51 @@ class WebServer {
 					// Assume everything is OK then.  Send back a reply.
 					dos.writeBytes("HTTP/1.1 200 OK\r\n");
 
-					// We send back some HTTP response headers.
-					dos.writeBytes("Content-length: " + file.length() + "\r\n");
-
-					// We could have use Files.probeContentType to find 
-					// the content type of the requested file, but let 
-					// me do the poor man approach here.
-					if (filename.endsWith(".html")) 
-					{
-						dos.writeBytes("Content-type: text/html\r\n");
-					}
-					if (filename.endsWith(".jpg")) 
-					{
-						dos.writeBytes("Content-type: image/jpeg\r\n");
-					}
+					
 					if (filename.endsWith(".pl")) 
 					{
-						dos.writeBytes("Content-type: text/pl\r\n");
+						System.out.println("Executing Perl script.");
+						
+						
+						
+						
+						dos.writeBytes("Content-length: " + file.length() + "\r\n");
+						
+						//dos.writeBytes("Content-type: text/pl\r\n");
+					} else {
+						
+						// We send back some HTTP response headers.
+						dos.writeBytes("Content-length: " + file.length() + "\r\n");
+	
+						// We could have use Files.probeContentType to find 
+						// the content type of the requested file, but let 
+						// me do the poor man approach here.
+						if (filename.endsWith(".html")) 
+						{
+							dos.writeBytes("Content-type: text/html\r\n");
+						}
+						if (filename.endsWith(".jpg")) 
+						{
+							dos.writeBytes("Content-type: image/jpeg\r\n");
+						}
+						
+						dos.writeBytes("\r\n");
+						
+						// Finish with HTTP response header.  Now send
+						// the body of the file.
+						
+						// Read the content 1KB at a time.
+						byte[] buffer = new byte[1024];
+						FileInputStream fis = new FileInputStream(file);
+						int size = fis.read(buffer);
+						while (size > 0) 
+						{
+							dos.write(buffer, 0, size);
+							size = fis.read(buffer);
+						}
 					}
-					dos.writeBytes("\r\n");
 
-					// Finish with HTTP response header.  Now send
-					// the body of the file.
 					
-					// Read the content 1KB at a time.
-					byte[] buffer = new byte[1024];
-					FileInputStream fis = new FileInputStream(file);
-					int size = fis.read(buffer);
-					while (size > 0) 
-					{
-						dos.write(buffer, 0, size);
-						size = fis.read(buffer);
-					}
 					dos.flush();
 
 					// Finally, close the socket and get ready for

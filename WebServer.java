@@ -14,23 +14,42 @@ class WebServer {
 	// Configure the directory where all HTML files are 
 	// stored.  You need to change this to your own local
 	// directory if you want to play with this server code.
-	static String WEB_ROOT = "/Users/zamakkat1/Dropbox/Study/Sem6/CS2105/Assignments/cs2105-a1";
+	//static String WEB_ROOT = "/Users/zamakkat1/Dropbox/Study/Sem6/CS2105/Assignments/a1";
+	static String WEB_ROOT = System.getenv("HOME") + "/a1";
 	
-	private static String runPerlScript(String scriptPath, String[] env) throws IOException {
+	private static String runPerlScript(String scriptPath, String[] env, String scriptInput) throws IOException {
 		System.out.println("Executing Perl script: " + scriptPath);
 		// Execute script with Environment variables given in String[] env
 		Process todo = Runtime.getRuntime().exec("/usr/bin/perl " + scriptPath, env);
 		
-		// Get process output
-	    BufferedReader reader = new BufferedReader(new InputStreamReader(todo.getInputStream()));
-	    //BUG HERE WITH POST!!!!
-	    String l = reader.readLine();
+		// If there is input then write it to script standard input
+		if (!scriptInput.equals("")) {
+			System.out.println(scriptInput);
+			DataOutputStream writer = new DataOutputStream(todo.getOutputStream());
+			writer.writeBytes(scriptInput);
+			writer.flush();
+		}
+		
 	    String output = "";
-	    while (l!=null) {
-	    	output += l + "\r\n";
-	    	l = reader.readLine();
-	    }
-	    System.out.println(output);
+		if (env[0].substring("REQUEST_METHOD=".length()).equals("GET")) {
+			// Error printing
+			BufferedReader eReader = new BufferedReader(new InputStreamReader(todo.getErrorStream()));
+		    String el = eReader.readLine();
+		    String errorOutput = "";
+		    while (el!=null) {
+		    	errorOutput += el + "\r\n";
+		    	el = eReader.readLine();
+		    }
+		    System.out.println(errorOutput);
+			// Get process output
+		    BufferedReader reader = new BufferedReader(new InputStreamReader(todo.getInputStream()));
+		    String l = reader.readLine();
+		    while (l!=null) {
+		    	output += l + "\r\n";
+		    	l = reader.readLine();
+		    }
+		    System.out.println(output);
+		}
 		return output;
 	}
 	
@@ -39,6 +58,7 @@ class WebServer {
 		String errorMessage = "I cannot find " + item + " on this server.\r\n";
 		output += "HTTP/1.1 404 Not Found\r\n";
 		output += "Content-length: " + errorMessage.length() + "\r\n\r\n";
+		output += errorMessage;
 		return output;
 	}
 	
@@ -47,6 +67,7 @@ class WebServer {
 		String errorMessage = "You have no permission to access " + item + " on this server.\r\n";
 		output += "HTTP/1.1 403 Forbidden\r\n";
 		output += "Content-length: " + errorMessage.length() + "\r\n\r\n";
+		output += errorMessage;
 		return output;
 	}
 	
@@ -55,20 +76,22 @@ class WebServer {
 		String errorMessage = "400 Bad Request\r\n";
 		output += "HTTP/1.1 400 Bad Request\r\n";
 		output += "Content-length: " + errorMessage.length() + "\r\n\r\n";
+		output += errorMessage;
 		return output;
 	}
 	
 	public static void main(String args[]) 
 	{
 		ServerSocket serverSocket;
-		// Create a server socket, listening on port 2105.
+		// Create a server socket, listening on port args[0].
 		try 
 		{
-			serverSocket = new ServerSocket(2105);
+			serverSocket = new ServerSocket(Integer.parseInt(args[0]));
+			System.out.println("Started listening at port " + args[0]);
 		} 
 		catch (IOException e)
 		{
-			System.err.println("Unable to listen on port 2105: " + e.getMessage());
+			System.err.println("Unable to listen on port "+ args[0] + ": " + e.getMessage());
 			return;
 		}
 
@@ -168,8 +191,8 @@ class WebServer {
 
 					if (scriptName.endsWith(".pl")) 
 					{
-						String[] env = {"REQUEST_METHOD="+req_method, "QUERY_STRING="+query_string};
-						String todo = runPerlScript(scriptPath, env);
+						String[] env = {"REQUEST_METHOD="+req_method, "QUERY_STRING="+query_string, "HOME="+System.getenv("HOME")};
+						String todo = runPerlScript(scriptPath, env, "");
 						
 					    dos.writeBytes("Content-length: " + (todo.length()-47) + "\r\n");
 						dos.writeBytes(todo);
@@ -221,13 +244,10 @@ class WebServer {
 					
 					while (!line.equals("")) {
 						if (line.contains("Content-Type: ")) {
-							content_type = (String) line.substring("Content-Type: ".length());
-							
+							content_type = (String) line.substring("Content-Type: ".length());							
 						} else if (line.contains("Content-Length: ")) {
-							content_length = (String) line.substring("Content-Length: ".length());
-							
+							content_length = (String) line.substring("Content-Length: ".length());	
 						}
-						System.out.println(line);
 						line = br.readLine();
 					}
 					int ch = br.read();
@@ -239,19 +259,15 @@ class WebServer {
 					}
 
 					req_method = "POST";
-					System.out.println(content_type);
-					System.out.println(content_length);
 					
-					System.out.println(scriptInput);
-					
-					String[] env = {"REQUEST_METHOD="+req_method, "CONTENT_TYPE="+content_type, "CONTENT_LENGTH="+content_length};
-					String todo = runPerlScript(scriptPath, env);
-				    
-					System.out.println("hello");
+					String[] env = {"REQUEST_METHOD="+req_method, "CONTENT_TYPE="+content_type, "CONTENT_LENGTH="+content_length, "HOME="+System.getenv("HOME")};
+					String todo = runPerlScript(scriptPath, env, scriptInput);
+
+					dos.writeBytes("HTTP/1.1 303 See Other\r\n");
+					dos.writeBytes("Location: todo.pl\r\n");
 					dos.writeBytes("Content-length: " + todo.length() + "\r\n");
 					dos.writeBytes(todo);
 					dos.flush();
-					
 					s.close();
 					continue;
 				} else {
